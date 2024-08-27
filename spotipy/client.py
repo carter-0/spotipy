@@ -137,6 +137,7 @@ class Spotify:
         status_retries=max_retries,
         backoff_factor=0.3,
         language=None,
+        prefix="https://api.spotify.com/v1/"
     ):
         """
         Creates a Spotify API client.
@@ -172,8 +173,10 @@ class Spotify:
         :param language:
             The language parameter advertises what language the user prefers to see.
             See ISO-639-1 language code: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
+        :param prefix:
+            The base URL for the Spotify API
         """
-        self.prefix = "https://api.spotify.com/v1/"
+        self.prefix = prefix
         self._auth = auth
         self.client_credentials_manager = client_credentials_manager
         self.oauth_manager = oauth_manager
