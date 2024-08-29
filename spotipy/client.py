@@ -137,7 +137,8 @@ class Spotify:
         status_retries=max_retries,
         backoff_factor=0.3,
         language=None,
-        prefix="https://api.spotify.com/v1/"
+        prefix="https://api.spotify.com/v1/",
+        fallback_prefix="https://api.spotify.com/v1/"
     ):
         """
         Creates a Spotify API client.
@@ -175,8 +176,11 @@ class Spotify:
             See ISO-639-1 language code: https://en.wikipedia.org/wiki/List_of_ISO_639-1_codes
         :param prefix:
             The base URL for the Spotify API
+        :fallback_prefix:
+            The base URL for the Spotify API to use for retries
         """
         self.prefix = prefix
+        self.fallback_prefix = fallback_prefix
         self._auth = auth
         self.client_credentials_manager = client_credentials_manager
         self.oauth_manager = oauth_manager
@@ -278,6 +282,25 @@ class Spotify:
             response.raise_for_status()
             results = response.json()
         except requests.exceptions.HTTPError as http_error:
+            # If the initial request fails, try with the fallback prefix
+            if self.fallback_prefix and self.fallback_prefix != self.prefix:
+                fallback_url = self.fallback_prefix + url.split(self.prefix, 1)[-1]
+                logger.debug('Retrying request with fallback URL: %s', fallback_url)
+                try:
+                    response = self._session.request(
+                        method, fallback_url, headers=headers, proxies=self.proxies,
+                        timeout=self.requests_timeout, **args
+                    )
+
+                    response.raise_for_status()
+                    results = response.json()
+                    
+                    return results
+                except requests.exceptions.RequestException:
+                    # If fallback also fails, raise the original error
+                    pass
+
+            # If fallback is not used or also fails, handle the error as before
             response = http_error.response
             try:
                 json_response = response.json()
