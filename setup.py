@@ -27,7 +27,8 @@ setup(
     install_requires=[
         "redis>=3.5.3",  # TODO: Move to extras_require in v3
         "requests>=2.25.0",
-        "urllib3>=1.26.0"
+        "urllib3>=1.26.0",
+        "requests_ip_rotator>=0.1.14",
     ],
     extras_require=extra_reqs,
     license='MIT',

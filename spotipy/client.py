@@ -8,6 +8,7 @@ import re
 import warnings
 
 import requests
+from requests_ip_rotator import ApiGateway
 
 from spotipy.exceptions import SpotifyException
 from spotipy.util import Retry
@@ -138,7 +139,8 @@ class Spotify:
         backoff_factor=0.3,
         language=None,
         prefix="https://api.spotify.com/v1/",
-        fallback_prefix="https://api.spotify.com/v1/"
+        fallback_prefix="https://api.spotify.com/v1/",
+        use_ip_rotator=False
     ):
         """
         Creates a Spotify API client.
@@ -178,6 +180,8 @@ class Spotify:
             The base URL for the Spotify API
         :fallback_prefix:
             The base URL for the Spotify API to use for retries
+        :use_ip_rotator:
+            Whether to use requests-ip-rotator for all requests
         """
         self.prefix = prefix
         self.fallback_prefix = fallback_prefix
@@ -193,6 +197,13 @@ class Spotify:
         self.status_retries = status_retries
         self.language = language
 
+        self.use_ip_rotator = use_ip_rotator
+        self.api_gateway = None
+        
+        if self.use_ip_rotator:
+            self.api_gateway = ApiGateway(self.prefix, regions=["eu-central-1"])
+            self.api_gateway.start()
+
         if isinstance(requests_session, requests.Session):
             self._session = requests_session
         else:
@@ -200,6 +211,9 @@ class Spotify:
                 self._build_session()
             else:  # Use the Requests API module as a "session".
                 self._session = requests.api
+
+        if self.use_ip_rotator:
+            self._session.mount(self.prefix, self.api_gateway)
 
     def set_auth(self, auth):
         self._auth = auth
@@ -222,6 +236,8 @@ class Spotify:
         try:
             if isinstance(self._session, requests.Session):
                 self._session.close()
+            if self.api_gateway:
+                self.api_gateway.shutdown()
         except AttributeError:
             pass
 
@@ -1324,7 +1340,7 @@ class Spotify:
 
     def current_user_saved_albums_contains(self, albums=[]):
         """ Check if one or more albums is already saved in
-            the current Spotify user’s “Your Music” library.
+            the current Spotify user's "Your Music" library.
 
             Parameters:
                 - albums - a list of album URIs, URLs or IDs
@@ -1370,7 +1386,7 @@ class Spotify:
 
     def current_user_saved_tracks_contains(self, tracks=None):
         """ Check if one or more tracks is already saved in
-            the current Spotify user’s “Your Music” library.
+            the current Spotify user's "Your Music" library.
 
             Parameters:
                 - tracks - a list of track URIs, URLs or IDs
@@ -1418,7 +1434,7 @@ class Spotify:
 
     def current_user_saved_episodes_contains(self, episodes=None):
         """ Check if one or more episodes is already saved in
-            the current Spotify user’s “Your Music” library.
+            the current Spotify user's "Your Music" library.
 
             Parameters:
                 - episodes - a list of episode URIs, URLs or IDs
@@ -1461,7 +1477,7 @@ class Spotify:
 
     def current_user_saved_shows_contains(self, shows=[]):
         """ Check if one or more shows is already saved in
-            the current Spotify user’s “Your Music” library.
+            the current Spotify user's "Your Music" library.
 
             Parameters:
                 - shows - a list of show URIs, URLs or IDs
@@ -2125,7 +2141,7 @@ class Spotify:
         return self._get(endpoint)
 
     def get_audiobook_chapters(self, id, market=None, limit=20, offset=0):
-        """ Get Spotify catalog information about an audiobook’s chapters.
+        """ Get Spotify catalog information about an audiobook's chapters.
 
         Parameters:
         - id - the Spotify ID for the audiobook
